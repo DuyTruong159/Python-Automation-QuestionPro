@@ -1,6 +1,10 @@
 """
     Truong Pham - Project Leader
+    Email: phamduytruong159@gmail.com
+    
     Divine Mbamara - Associate
+    Email: divinembamara@gmail.com
+    
     Automatic get export data of QuestionPro to calculate on Dashboard
 """
 
@@ -10,6 +14,7 @@ import openpyxl
 import csv
 import datetime
 import subprocess
+from tkinter import *
 
 """
     Object
@@ -51,10 +56,11 @@ class Contestant:
     
 # Judge Object
 class Judge:
-    def __init__(self, name, submission):
+    def __init__(self, name, submission, isSubmission = True):
         self.name = name
         self.submission = submission
         self.duplicate = False
+        self.isSubmission = isSubmission
 
 # Dashboard object
 class Dashboard:
@@ -73,21 +79,12 @@ def convertCSVtoExcel():
     sheet = wb.active
 
     # Open CSV file
-    with open(directory + file + '.csv') as f:
+    with open(file + '.csv') as f:
         reader = csv.reader(f, delimiter=',')
         for row in reader:
             sheet.append(row)
 
-    wb.save(directory + file + '.xlsx')
-
-# Ask user to input file to calculate
-def userInputFile():
-    file = ''
-    # Loop till it has a file exist
-    while not(os.path.isfile(directory + file + '.csv')):
-        # Ask user to input file name
-        file = input('Write the file name you want to calculate: ')
-    return file
+    wb.save(file + '.xlsx')
 
 # Get data by column name
 def getDataByColumnName(colName):
@@ -95,7 +92,7 @@ def getDataByColumnName(colName):
     result =  []
 
     # Open QuestionPro file
-    wb = openpyxl.load_workbook(directory + file + '.xlsx')
+    wb = openpyxl.load_workbook(file + '.xlsx')
     # Go to active sheet
     sheet = wb.active
 
@@ -141,7 +138,7 @@ def addJudgeNotInData(judges):
         # Check if judge not in current judge is having
         if not judge in currentJudges:
             # Add judge not having with submission 0
-            judges.append(Judge(judge, 0))
+            judges.append(Judge(judge, 0, False))
 
 # Generate, design and export new Dashboard file
 def exportDashboardFile(data):
@@ -260,7 +257,7 @@ def generateSubmissionData(dashboard, colLetters, data):
                     # Add submission to cell from E4 vertical and horizon
                     dashboard[colLetters[c + 4] + str(i + 4)] = judge.submission
                     # Design layout
-                    designBorderWidthSubmissionsSecondTable(dashboard, colLetters, c, i)
+                    designBorderWidthSubmissionsSecondTable(dashboard, colLetters, judge, c, i)
 
 # Add Result data to Dashboard file on Second Table
 def generateResultData(dashboard, colLetters, data):
@@ -378,12 +375,17 @@ def designBorderWidthContestantsSecondTable(dashboard, colLetters, i):
     dashboard.column_dimensions[colLetters[i + 4]].width = 30
 
 # Design Border and Width for Submissions on Second Table on Dashboard file
-def designBorderWidthSubmissionsSecondTable(dashboard, colLetters, c, i):
+def designBorderWidthSubmissionsSecondTable(dashboard, colLetters, judge, c, i):
     # Variable to define border
     side = openpyxl.styles.Side(border_style="thin", color="000000")
 
     # Make border and width
     dashboard[colLetters[c + 4] + str(i + 4)].border = openpyxl.styles.Border(left=side, right=side)
+
+    # Fill red color on data not have submission
+    if judge.isSubmission == False:
+        dashboard[colLetters[c + 4] + str(i + 4)].fill = openpyxl.styles.PatternFill(patternType='solid', 
+                                                    fgColor=openpyxl.styles.colors.Color(rgb='ea3323'))
 
 # Design Border and Width for Results on Second Table on Dashboard file
 def designBorderWidthResultsSecondTable(dashboard, colLetters, c):
@@ -410,57 +412,98 @@ def designBorderWidthContestantsThirdTable(dashboard, colLetters, contestant, st
     # Make border and width
     dashboard[colLetters[len(contestant) + 5] + str(step + 3)].border = openpyxl.styles.Border(left=side, right=side, bottom=side, top=side)
 
+# Function button Calculate Click
+def calculateFile():
+    # Get global file
+    global file
+
+    # Constant variables
+    contestantColName = 'Custom Variable 2'
+    judgeColName = 'Hello Judges! This is your digital scoring survey for 2024 "Further Faster Grand Pitch" Event In this Pitch competition we are looking for your help to determine the... "BEST PITCH PRESENTATION" Judge (please select your name): '
+    submissionColName = 'Weight'
+
+    # Data variable
+    dashboard = Dashboard()
+
+    # Check user has choose file
+    if(listFile.curselection()):
+        # Assign file user choose
+        file = directory + listFile.get(listFile.curselection())
+
+        # Convert CSV to Excel file
+        convertCSVtoExcel()
+
+        # Get data
+        contestants = getDataByColumnName(contestantColName)
+        judges = getDataByColumnName(judgeColName)
+        submissions = getDataByColumnName(submissionColName)
+
+        # Get contestant in list of unique and sort ASC from contestants
+        for contestantUnique in sorted(set(contestants)):
+            # Create new contestant object
+            contestant = Contestant(contestantUnique)
+            # Loop contestants data from end to start
+            for i in range(len(contestants) - 1, -1, -1):
+                # If the same contestants
+                if contestantUnique == contestants[i]:
+                    # Create new judge object
+                    judge = Judge(convertToJudgeName(judges[i]), int(float(submissions[i])))
+                    # Check judge have in list of contestant object
+                    if not contestant.isJudgeInList(judge.name):
+                        # Update duplicate field of judge to True
+                        judge.duplicate = True
+                    # Add judge list to contestant object
+                    contestant.judges.append(judge)
+        
+            # Add judge not having in list
+            addJudgeNotInData(contestant.judges)
+
+            # Add contestant to list of dashboard object
+            dashboard.contestants.append(contestant)
+
+        # Create, generate and auto open result file
+        exportDashboardFile(dashboard)
+
+# Show file in list of app
+def addFileExistInList():
+    # Variable index of list
+    index = 1
+    # Loop all file in directory
+    for fileCSV in os.listdir(path=directory):
+        # If file is CSV
+        if fileCSV.endswith(".csv"):
+            # Add file to list 
+            listFile.insert(index, fileCSV.rstrip(".csv"))
+            # Increase index to 1
+            index += 1
+
 """
     Main
 """
 
 # Constant variables
 directory = '/Users/truongpham/Desktop/QuestionPro Data/'
-contestantColName = 'Custom Variable 2'
-judgeColName = 'Hello Judges! This is your digital scoring survey for 2024 "Further Faster Grand Pitch" Event In this Pitch competition we are looking for your help to determine the... "BEST PITCH PRESENTATION" Judge (please select your name): '
-submissionColName = 'Weight'
+file = ''
 
-# Variables
-contestants = []
-judges = []
-submissions = []
+# Create app dialog
+app = Tk()
 
-# Data variable
-dashboard = Dashboard()
+# Add title to app
+app.title("Further Faster Grand Pitch")
+# Set width and height of app
+app.geometry("500x200")
 
-# Ask user to input the file to calculate
-file = userInputFile()
+# Add Calculate button with function click
+btnCalculateFile = Button(app, text = "Calculate File", command=calculateFile)
+# Position button on app and padding vertical
+btnCalculateFile.pack(pady=(20, 20))
 
-# Convert CSV to Excel file
-convertCSVtoExcel()
+# Add List file CSV to calculate
+listFile = Listbox(app)
+# Add file in list
+addFileExistInList()
+# Position list on app
+listFile.pack(fill="x")
 
-# Get data
-contestants = getDataByColumnName(contestantColName)
-judges = getDataByColumnName(judgeColName)
-submissions = getDataByColumnName(submissionColName)
-
-# Get contestant in list of unique and sort ASC from contestants
-for contestantUnique in sorted(set(contestants)):
-   # Create new contestant object
-   contestant = Contestant(contestantUnique)
-   # Loop contestants data from end to start
-   for i in range(len(contestants) - 1, -1, -1):
-       # If the same contestants
-       if contestantUnique == contestants[i]:
-           # Create new judge object
-           judge = Judge(convertToJudgeName(judges[i]), int(float(submissions[i])))
-           # Check judge have in list of contestant object
-           if not contestant.isJudgeInList(judge.name):
-               # Update duplicate field of judge to True
-               judge.duplicate = True
-           # Add judge list to contestant object
-           contestant.judges.append(judge)
-   
-   # Add judge not having in list
-   addJudgeNotInData(contestant.judges)
-
-   # Add contestant to list of dashboard object
-   dashboard.contestants.append(contestant)
-
-# Create, generate and auto open result file
-exportDashboardFile(dashboard)
+# Execute app
+app.mainloop()
