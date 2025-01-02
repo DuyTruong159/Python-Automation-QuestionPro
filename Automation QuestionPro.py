@@ -15,6 +15,7 @@ import csv
 import datetime
 import subprocess
 from tkinter import *
+from tkinter.filedialog import askopenfile
 
 """
     Object
@@ -77,7 +78,7 @@ def convertCSVtoExcel():
     wb = openpyxl.Workbook()
     # Go to active sheet
     sheet = wb.active
-
+    
     # Open CSV file
     with open(file + '.csv') as f:
         reader = csv.reader(f, delimiter=',')
@@ -412,10 +413,25 @@ def designBorderWidthContestantsThirdTable(dashboard, colLetters, contestant, st
     # Make border and width
     dashboard[colLetters[len(contestant) + 5] + str(step + 3)].border = openpyxl.styles.Border(left=side, right=side, bottom=side, top=side)
 
+def openFile():
+    # Get global file
+    global file, directory
+
+    # Open File Explore to choose file
+    fileSelect = askopenfile(title = "Select file", filetypes =[("CSV Files", "*.csv")])
+    # Check file choosen
+    if fileSelect:
+        # Assign file with no file type
+        file = os.path.basename(fileSelect.name).rstrip(".csv")
+        # Assign directory file located
+        directory = os.path.dirname(fileSelect.name) + "/"
+        # Show File Name on Label
+        labelFilename["text"] = os.path.basename(fileSelect.name)
+
 # Function button Calculate Click
 def calculateFile():
     # Get global file
-    global file
+    global file, directory
 
     # Constant variables
     contestantColName = 'Custom Variable 2'
@@ -426,9 +442,9 @@ def calculateFile():
     dashboard = Dashboard()
 
     # Check user has choose file
-    if(listFile.curselection()):
+    if file:
         # Assign file user choose
-        file = directory + listFile.get(listFile.curselection())
+        file = directory + file
 
         # Convert CSV to Excel file
         convertCSVtoExcel()
@@ -464,25 +480,12 @@ def calculateFile():
         # Create, generate and auto open result file
         exportDashboardFile(dashboard)
 
-# Show file in list of app
-def addFileExistInList():
-    # Variable index of list
-    index = 1
-    # Loop all file in directory
-    for fileCSV in os.listdir(path=directory):
-        # If file is CSV
-        if fileCSV.endswith(".csv"):
-            # Add file to list 
-            listFile.insert(index, fileCSV.rstrip(".csv"))
-            # Increase index to 1
-            index += 1
-
 """
     Main
 """
 
 # Constant variables
-directory = '/Users/truongpham/Desktop/QuestionPro Data/'
+directory = ''
 file = ''
 
 # Create app dialog
@@ -493,17 +496,20 @@ app.title("Further Faster Grand Pitch")
 # Set width and height of app
 app.geometry("500x200")
 
+# Add Select File button with function click
+btnOpenFile = Button(app, text = "Select File", command=openFile)
+# Position button on app and padding vertical
+btnOpenFile.pack(pady=(20, 20))
+
 # Add Calculate button with function click
 btnCalculateFile = Button(app, text = "Calculate File", command=calculateFile)
 # Position button on app and padding vertical
-btnCalculateFile.pack(pady=(20, 20))
+btnCalculateFile.pack(pady=(0, 20))
 
-# Add List file CSV to calculate
-listFile = Listbox(app)
-# Add file in list
-addFileExistInList()
-# Position list on app
-listFile.pack(fill="x")
+# Add Label File Name to know which File selected
+labelFilename = Label(app, text = "")
+# Position button on app and full width
+labelFilename.pack(fill="x")
 
 # Execute app
 app.mainloop()
