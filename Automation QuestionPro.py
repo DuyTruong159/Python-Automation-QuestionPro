@@ -53,7 +53,7 @@ class Contestant:
 
         for judge in self.judges:
             result += int(float(judge.submission))
-        return (result / len(avgJudges))
+        return float(f"{result / len(avgJudges):.2f}") 
     
 # Judge Object
 class Judge:
