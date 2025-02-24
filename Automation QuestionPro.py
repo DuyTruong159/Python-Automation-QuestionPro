@@ -91,6 +91,7 @@ def convertCSVtoExcel():
 def getDataByColumnName(colName):
     # Variable to return
     result =  []
+    index = 0
 
     # Open QuestionPro file
     wb = openpyxl.load_workbook(file + '.xlsx')
@@ -99,15 +100,20 @@ def getDataByColumnName(colName):
 
     # Scan all column
     for column in sheet.iter_cols():
+        # Get index of start data
+        for i in range(len(column)):
+            if "Response ID" in str(column[i]. value):
+                index = i
+                break
         # Get column name
-        columnName = column[3].value
+        columnName = column[index].value
         # Check column name to get data
-        if str(columnName) in colName:
+        if colName in str(columnName):
             # Loop data of column from row 5
-            for cell in column[4:]:
+            for cell in column[(index + 1):]:
                 # Add data to list
                 result.append(cell.value)
-    
+                
     return result
 
 # Convert judge Id to judge name
@@ -147,7 +153,7 @@ def exportDashboardFile(data):
     columnLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
     
     # Get current datetime
-    currentDatetime = datetime.datetime.today().strftime('%Y-%m-%d')
+    currentDatetime = datetime.datetime.today().strftime('%Y-%m-%d-%H.%M.%S')
 
     # Create new Excel file
     dashboardWb = openpyxl.Workbook()
@@ -160,7 +166,7 @@ def exportDashboardFile(data):
     dashboard['B3'] = 'Result'
     dashboard['D9'] = 'Result'
     dashboard['D3'] = 'Metrix'
-    dashboard['H3'] = 'Duplicate'
+    dashboard[columnLetters[len(data.contestants) + 5] + '3'] = 'Duplicate'
 
     # Add data value on file
     generateRankingData(dashboard, columnLetters, data)
@@ -177,7 +183,7 @@ def exportDashboardFile(data):
     dashboardWb.save(directory + 'Dashboard_' + currentDatetime + '.xlsx')
 
     # Auto Open Dashboard file
-    subprocess.Popen(['open', '-a', 'Microsoft Excel', directory + 'Dashboard_' + currentDatetime + '.xlsx'])
+    os.startfile(directory + 'Dashboard_' + currentDatetime + '.xlsx')
 
 # Return judges list with unique and sort ASC list
 def getJudgesListUniqueSortASC(data):
@@ -333,7 +339,7 @@ def designLayoutTitle(dashboard, colLetters, data):
     dashboard.column_dimensions['D'].width = 30
 
     # Heading center, merge on Third Table
-    dashboard['H3'].alignment = openpyxl.styles.Alignment(horizontal='center')
+    dashboard[colLetters[len(data.contestants) + 5] + '3'].alignment = openpyxl.styles.Alignment(horizontal='center')
     # Make border and width on Third Table
     dashboard[colLetters[len(data.contestants) + 5] + '3'].border = openpyxl.styles.Border(top=side, left=side, bottom=side)
     dashboard[colLetters[len(data.contestants) + 6] + '3'].border = openpyxl.styles.Border(top=side, bottom=side)
@@ -342,7 +348,7 @@ def designLayoutTitle(dashboard, colLetters, data):
     dashboard.column_dimensions[colLetters[len(data.contestants) + 6]].width = 30
     dashboard.column_dimensions[colLetters[len(data.contestants) + 7]].width = 30
     # Calculate by contestant generate horizon on Second Table
-    dashboard.merge_cells('H3:' + colLetters[len(data.contestants) + 7] + '3')
+    dashboard.merge_cells(colLetters[len(data.contestants) + 5] + '3:' + colLetters[len(data.contestants) + 7] + '3')
 
 # Design Border and Width for Fist Table on Dashboard file
 def designBorderWidthFirstTable(dashboard, colLetters, r, i):
@@ -351,12 +357,18 @@ def designBorderWidthFirstTable(dashboard, colLetters, r, i):
     # Variable for color top 3
     colors = ['4fad5b', 'ffff54', 'ea3323']
 
+    # Check i not out of index
+    if i > len(colors) - 1:
+        rgb = 'ffffff'
+    else:
+        rgb = colors[i]
+
     # Make border and width
     dashboard[colLetters[r] + str(i + 4)].border = openpyxl.styles.Border(left=side, right=side, bottom=side)
 
     # Fill color for top 3
     dashboard[colLetters[r] + str(i + 4)].fill = openpyxl.styles.PatternFill(patternType='solid', 
-                                                    fgColor=openpyxl.styles.colors.Color(rgb=colors[i]))
+                                                    fgColor=openpyxl.styles.colors.Color(rgb=rgb))
     
 # Design Border and Width for Judges on Second Table on Dashboard file
 def designBorderWidthJudgesSecondTable(dashboard, i):
@@ -418,11 +430,11 @@ def openFile():
     global file, directory
 
     # Open File Explore to choose file
-    fileSelect = askopenfile(title = "Select file", filetypes =[("CSV Files", "*.csv")])
+    fileSelect = askopenfile(title = "Select file", filetypes =[("CSV Files", "*.csv"),("Excel files", ".xlsx")])
     # Check file choosen
     if fileSelect:
         # Assign file with no file type
-        file = os.path.basename(fileSelect.name).rstrip(".csv")
+        file = os.path.basename(fileSelect.name)
         # Assign directory file located
         directory = os.path.dirname(fileSelect.name) + "/"
         # Show File Name on Label
@@ -435,7 +447,7 @@ def calculateFile():
 
     # Constant variables
     contestantColName = 'Custom Variable 2'
-    judgeColName = 'Hello Judges! This is your digital scoring survey for 2024 "Further Faster Grand Pitch" Event In this Pitch competition we are looking for your help to determine the... "BEST PITCH PRESENTATION" Judge (please select your name): '
+    judgeColName = 'Hello'
     submissionColName = 'Weight'
 
     # Data variable
@@ -443,11 +455,17 @@ def calculateFile():
 
     # Check user has choose file
     if file:
-        # Assign file user choose
-        file = directory + file
+        if ".csv" in file:
+            file = file.rstrip(".csv")
+            # Assign file user choose
+            file = directory + file
 
-        # Convert CSV to Excel file
-        convertCSVtoExcel()
+            # Convert CSV to Excel file
+            convertCSVtoExcel()
+        else:
+            file = file.rstrip(".xlsx")
+            # Assign file user choose
+            file = directory + file
 
         # Get data
         contestants = getDataByColumnName(contestantColName)
