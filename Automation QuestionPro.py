@@ -96,7 +96,8 @@ def getDataByColumnName(colName):
     # Open QuestionPro file
     wb = openpyxl.load_workbook(file + '.xlsx')
     # Go to active sheet
-    sheet = wb.active
+    # sheet = wb.active
+    sheet = wb["Raw Data"]
 
     # Scan all column
     for column in sheet.iter_cols():
@@ -112,21 +113,25 @@ def getDataByColumnName(colName):
             # Loop data of column from row 5
             for cell in column[(index + 1):]:
                 # Add data to list
-                result.append(cell.value)
+                if(colName in 'Hello'):
+                    # Check if has value or None then default value
+                    result.append(cell.value or 0)
+                else:
+                    result.append(cell.value or '')
                 
     return result
 
 # Convert judge Id to judge name
 def convertToJudgeName(judgeId):
     judgesLookup = {
+        '0' : '',
         '1' : 'Judge 1 - Invest Barrie',
         '2' : 'Judge 2 - Empower Simcoe',
         '3' : 'Judge 3 - UpChuckle Education',
         '4' : 'Judge 4 - UpLift Black',
         '5' : 'Judge 5 - Georgian College'
     }
-
-    return judgesLookup[judgeId]
+    return judgesLookup[str(int(judgeId))]
 
 # Add judge not in data file in Contestant Object judges list with submission 0
 def addJudgeNotInData(judges):
@@ -164,7 +169,7 @@ def exportDashboardFile(data):
     dashboard['A1'] = 'Further Faster Grand Pitch Event'
     dashboard['A3'] = 'Contestant Name'
     dashboard['B3'] = 'Result'
-    dashboard['D9'] = 'Result'
+    dashboard['D' + str(len(getJudgesListUniqueSortASC(data)) + 4)] = 'Result'
     dashboard['D3'] = 'Metrix'
     dashboard[columnLetters[len(data.contestants) + 5] + '3'] = 'Duplicate'
 
@@ -268,12 +273,13 @@ def generateSubmissionData(dashboard, colLetters, data):
 
 # Add Result data to Dashboard file on Second Table
 def generateResultData(dashboard, colLetters, data):
+    judgesLength = len(getJudgesListUniqueSortASC(data)) + 4
     # Loop all contestant from data
     for c in range(len(data.contestants)):
         # Add Result to cell from E9 horizon
-        dashboard[colLetters[c + 4] + '9'] = data.contestants[c].getResult()
+        dashboard[colLetters[c + 4] + str(judgesLength)] = data.contestants[c].getResult()
         # Design layout
-        designBorderWidthResultsSecondTable(dashboard, colLetters, c)
+        designBorderWidthResultsSecondTable(dashboard, colLetters, c, judgesLength)
 
 # Add Duplicate data to Dashboard file on Third Table
 def generateDuplicateData(dashboard, colLetters, data):
@@ -335,7 +341,7 @@ def designLayoutTitle(dashboard, colLetters, data):
 
     # Make border and width Title on Second Table
     dashboard['D3'].border = openpyxl.styles.Border(top=side, left=side, right=side, bottom=side)
-    dashboard['D9'].border = openpyxl.styles.Border(top=side, left=side, right=side, bottom=side)
+    dashboard['D' + str(len(getJudgesListUniqueSortASC(data)) + 4)].border = openpyxl.styles.Border(top=side, left=side, right=side, bottom=side)
     dashboard.column_dimensions['D'].width = 30
 
     # Heading center, merge on Third Table
@@ -401,12 +407,12 @@ def designBorderWidthSubmissionsSecondTable(dashboard, colLetters, judge, c, i):
                                                     fgColor=openpyxl.styles.colors.Color(rgb='ea3323'))
 
 # Design Border and Width for Results on Second Table on Dashboard file
-def designBorderWidthResultsSecondTable(dashboard, colLetters, c):
+def designBorderWidthResultsSecondTable(dashboard, colLetters, c, judgesLength):
     # Variable to define border
     side = openpyxl.styles.Side(border_style="thin", color="000000")
 
     # Make border and width
-    dashboard[colLetters[c + 4] + '9'].border = openpyxl.styles.Border(left=side, right=side, bottom=side, top=side)
+    dashboard[colLetters[c + 4] + str(judgesLength)].border = openpyxl.styles.Border(left=side, right=side, bottom=side, top=side)
 
 # Design Border and Width for Judges, Submissions on Third Table on Dashboard file
 def designBorderWidthJudgesSubmissionsThirdTable(dashboard, colLetters, contestant, step):
