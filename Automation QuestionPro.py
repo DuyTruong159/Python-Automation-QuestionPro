@@ -52,7 +52,8 @@ class Contestant:
             avgJudges = self.judges
 
         for judge in self.judges:
-            result += int(float(judge.submission))
+            if judge.duplicate == False:
+                result += int(float(judge.submission))
         return float(f"{result / len(avgJudges):.2f}") 
     
 # Judge Object
@@ -77,7 +78,8 @@ def convertCSVtoExcel():
     # Create new Excel file
     wb = openpyxl.Workbook()
     # Go to active sheet
-    sheet = wb.active
+    # sheet = wb.active
+    sheet = wb["Raw Data"]
     
     # Open CSV file
     with open(file + '.csv') as f:
@@ -88,7 +90,7 @@ def convertCSVtoExcel():
     wb.save(file + '.xlsx')
 
 # Get data by column name
-def getDataByColumnName(colName):
+def getDataByColumnName(colName, isConvertToExcel):
     # Variable to return
     result =  []
     index = 0
@@ -96,8 +98,10 @@ def getDataByColumnName(colName):
     # Open QuestionPro file
     wb = openpyxl.load_workbook(file + '.xlsx')
     # Go to active sheet
-    # sheet = wb.active
-    sheet = wb["Raw Data"]
+    if isConvertToExcel:
+        sheet = wb.active
+    else:
+        sheet = wb["Raw Data"]
 
     # Scan all column
     for column in sheet.iter_cols():
@@ -455,6 +459,8 @@ def calculateFile():
     contestantColName = 'Custom Variable 2'
     judgeColName = 'Hello'
     submissionColName = 'Weight'
+    statusColName = 'Response Status'
+    isConvertToExcel = False
 
     # Data variable
     dashboard = Dashboard()
@@ -464,19 +470,21 @@ def calculateFile():
         if ".csv" in file:
             file = file.rstrip(".csv")
             # Assign file user choose
-            file = directory + file
+            file = directory + file 
 
             # Convert CSV to Excel file
             convertCSVtoExcel()
+            isConvertToExcel = True
         else:
             file = file.rstrip(".xlsx")
             # Assign file user choose
             file = directory + file
 
         # Get data
-        contestants = getDataByColumnName(contestantColName)
-        judges = getDataByColumnName(judgeColName)
-        submissions = getDataByColumnName(submissionColName)
+        contestants = getDataByColumnName(contestantColName, isConvertToExcel)
+        judges = getDataByColumnName(judgeColName, isConvertToExcel)
+        submissions = getDataByColumnName(submissionColName, isConvertToExcel)
+        status = getDataByColumnName(statusColName, isConvertToExcel)
 
         # Get contestant in list of unique and sort ASC from contestants
         for contestantUnique in sorted(set(contestants)):
@@ -485,7 +493,7 @@ def calculateFile():
             # Loop contestants data from end to start
             for i in range(len(contestants) - 1, -1, -1):
                 # If the same contestants
-                if contestantUnique == contestants[i]:
+                if contestantUnique == contestants[i] and str(status[i]) in 'Completed':
                     # Create new judge object
                     judge = Judge(convertToJudgeName(judges[i]), int(float(submissions[i])))
                     # Check judge have in list of contestant object
